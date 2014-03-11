@@ -38,9 +38,6 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	private TweetRepository tweetRepository;
 
 	@Autowired
-	private GarbageRepository garbageRepository;
-
-	@Autowired
 	private TwitterUserRepository twitterUserRepository;
 
 	@Autowired
@@ -85,19 +82,20 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 		}
 		// Check if this tweet is known to the DB
 		Tweet tweet = tweetRepository.findOne(status.getId());
-		if (tweet == null) {
+		if (tweet == null)
 			tweet = processNewTweet(status);
-		}
 		if (tweet != null) {
 			tweet.setState(TweetStates.NOT_RATED);
 			tweet.increaseQuantity(1);
+			tweet.setFavorites(status.getFavoriteCount());
 			incrementUserRetweets(status.getUser().getId());
 			if (saveAfterProcess) {
 				Tweet t = null;
 				try {
 					t = tweetRepository.save(tweet);
 				} catch (Exception e) {
-					log.warn("Tweet " + tweet.getId() + " could not be saved");
+					log.warn("Tweet could not be saved: {},,, id = {}", tweet.getText(), tweet.getId());
+					e.printStackTrace();
 				}
 				return t;
 			}
@@ -105,73 +103,69 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 		return tweet;
 	}
 
-	private void incrementUserRetweets(long userId){
+	private void incrementUserRetweets(long userId) {
 		TwitterUser author = twitterUserRepository.findOne(userId);
-		author.setRts(author.getRts()+1);
+		author.setRts(author.getRts() + 1);
 		twitterUserRepository.save(author);
 	}
 
 	private Tweet processNewTweet(Status status) {
 		Tweet tweet;
-		if (!isGarbage(status)) {
-			TwitterUser author = twitterUserRepository.findOne(status.getUser()
-					.getId());
-			// If the author of the original tweet is unknown to the DB (most
-			// probable), set the auther of the retweet as author of the
-			// original tweet
-			if (author == null) {
-				try {
-					// author =
-					// TwitterUser.fromUser(twitter.showUser(status.getUser().getId()));
-					author = new TwitterUser();
-					author.setId(status.getUser().getId());
-					author.setName(status.getUser().getName());
-					author.setScreenName(status.getUser().getScreenName());
+		TwitterUser author = twitterUserRepository.findOne(status.getUser()
+				.getId());
+		// If the author of the original tweet is unknown to the DB (most
+		// probable), set the auther of the retweet as author of the
+		// original tweet
+		if (author == null) {
+			try {
+				// author =
+				// TwitterUser.fromUser(twitter.showUser(status.getUser().getId()));
+				author = new TwitterUser();
+				author.setId(status.getUser().getId());
+				author.setName(status.getUser().getName());
+				author.setScreenName(status.getUser().getScreenName());
 
 //					author.setLanguage(getlanguage(status.getText()));
 //					author.setLocation(getLocation(status));
-					// if(trackingLanguage.equals(author.getLanguage())){
-					author.setListMember(true);
-					author.setType(TweepTypes.NEW);
+				// if(trackingLanguage.equals(author.getLanguage())){
+				author.setListMember(true);
+				author.setType(TweepTypes.NEW);
 					/*
 					 * } else{ author.setListMember(false);
 					 * author.setType(TweepTypes.OTHERLANG); }
 					 */
-				} catch (Exception e) {
-					log.error("Error fetching twitter user.", e);
-				}
+			} catch (Exception e) {
+				log.error("Error fetching twitter user.", e);
 			}
-			if(author.getLanguage()==null){
-				String discoveredLanguage = getTrackingLanguage(status.getText());
-				if(discoveredLanguage!=null){
-					log.debug("Language of tweet = {}", discoveredLanguage);
-					author.setLanguage(discoveredLanguage);
-				}
+		}
+		if (author.getLanguage() == null) {
+			String discoveredLanguage = getTrackingLanguage(status.getText());
+			if (discoveredLanguage != null) {
+				log.debug("Language of tweet = {}", discoveredLanguage);
+				author.setLanguage(discoveredLanguage);
 			}
-			if(author.getLocation()==null){
-				if(containsBelgium(status.getUser().getLocation(), status.getUser().getURL()))
-					author.setLocation(trackingCountry);
-				else if(isBelgium(status.getGeoLocation()))
-					author.setLocation(trackingCountry);
-				else if(containsHolland(status.getUser().getLocation(), status.getUser().getURL())){
-					author.setLocation("NL");
-					author.setType(TweepTypes.OTHER);
-				}
-				else if(isHolland(status.getGeoLocation())){
-					author.setLocation("NL");
-					author.setType(TweepTypes.OTHER);
-				}
-				else if(containsFrance(status.getUser().getLocation(), status.getUser().getURL())){
-					author.setLocation("FR");
-					author.setType(TweepTypes.OTHER);
-				}
-				else if(isFrance(status.getGeoLocation())){
-					author.setLocation("FR");
-					author.setType(TweepTypes.OTHER);
-				}
+		}
+		if (author.getLocation() == null) {
+			if (containsBelgium(status.getUser().getLocation(), status.getUser().getURL()))
+				author.setLocation(trackingCountry);
+			else if (isBelgium(status.getGeoLocation()))
+				author.setLocation(trackingCountry);
+			else if (containsHolland(status.getUser().getLocation(), status.getUser().getURL())) {
+				author.setLocation("NL");
+				author.setType(TweepTypes.OTHER);
+			} else if (isHolland(status.getGeoLocation())) {
+				author.setLocation("NL");
+				author.setType(TweepTypes.OTHER);
+			} else if (containsFrance(status.getUser().getLocation(), status.getUser().getURL())) {
+				author.setLocation("FR");
+				author.setType(TweepTypes.OTHER);
+			} else if (isFrance(status.getGeoLocation())) {
+				author.setLocation("FR");
+				author.setType(TweepTypes.OTHER);
 			}
-			author.setNumberoftweets(author.getNumberoftweets()+1);
-			twitterUserRepository.save(author);
+		}
+		author.setNumberoftweets(author.getNumberoftweets() + 1);
+		author = twitterUserRepository.save(author);
 			/*
 			 * else if(author.getLanguage()==null){ try {
 			 * author.setLanguage(getlanguage(status.getText()));
@@ -183,112 +177,112 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 			 * twitterUserRepository.save(author); } } catch (Exception e) {
 			 * log.error("Error fetching twitter user.", e); } }
 			 */
-			tweet = Tweet.fromStatus(status, author);
-			// Start processing images, urls and hashtags
-			tweet.addObjects(processTweetObjects(tweet, status));
-			return tweet;
-		}
-		return null;
+		tweet = Tweet.fromStatus(status, author);
+		// Start processing images, urls and hashtags
+		tweet.addObjects(processTweetObjects(tweet, status));
+		return tweet;
 	}
 
-	private boolean containsBelgium(String location, String url){
-		if(url!=null && url.indexOf(".be")>=0) return true;
+	private boolean containsBelgium(String location, String url) {
+		if (url != null && url.indexOf(".be") >= 0) return true;
 		String[] belgianPointers = {"Belgie", "Belgium", "Brussel", "Antwerp", "Gent", "Ghent", "Leuven", "ostend", "Brugge",
-		"Kortrijk", "Aalst", "Sint Niklaas", "Mechelen", "Roeselare", "Izegem", "Turnhout", "Genk", "Hasselt"};
+				"Kortrijk", "Aalst", "Sint Niklaas", "Mechelen", "Roeselare", "Izegem", "Turnhout", "Genk", "Hasselt"};
 		for (int i = 0; i < belgianPointers.length; i++)
-			if(location.toLowerCase().indexOf(belgianPointers[i].toLowerCase())>=0) return true;
+			if (location.toLowerCase().indexOf(belgianPointers[i].toLowerCase()) >= 0) return true;
 		return false;
 	}
 
-	private boolean isBelgium(GeoLocation geoLoc){
-		if(geoLoc==null) return false;
+	private boolean isBelgium(GeoLocation geoLoc) {
+		if (geoLoc == null) return false;
 		GeoLocation[] geos = new GeoLocation[20];
-		int i=0;
-		geos[i++] = new GeoLocation(51.378638,2.504883);
-		geos[i++] = new GeoLocation(50.726024,3.586178);
-		geos[i++] = new GeoLocation(51.303145,3.509274);
-		geos[i++] = new GeoLocation(50.464498,5.821896);
-		geos[i++] = new GeoLocation(51.474540,4.162960);
-		geos[i++] = new GeoLocation(51.316881,5.140743);
-		geos[i++] = new GeoLocation(50.795519,5.761471);
-		geos[i++] = new GeoLocation(50.443513,6.365719);
-		geos[i++] = new GeoLocation(50.771208,3.163204);
-		geos[i++] = new GeoLocation(50.495958,3.564205);
-		geos[i++] = new GeoLocation(50.429518,3.668575);
-		geos[i++] = new GeoLocation(50.310392,4.130001);
-		geos[i++] = new GeoLocation(50.443513,4.168453);
-		geos[i++] = new GeoLocation(49.958288,4.695797);
-		geos[i++] = new GeoLocation(50.447011,4.690304);
-		geos[i++] = new GeoLocation(50.190968,6.382198);
-		geos[i++] = new GeoLocation(50.159305,4.849606);
-		geos[i++] = new GeoLocation(49.841525,5.794430);
-		geos[i++] = new GeoLocation(49.784811,5.173702);
-		geos[i++] = new GeoLocation(49.539469,5.849361);
+		int i = 0;
+		geos[i++] = new GeoLocation(51.378638, 2.504883);
+		geos[i++] = new GeoLocation(50.726024, 3.586178);
+		geos[i++] = new GeoLocation(51.303145, 3.509274);
+		geos[i++] = new GeoLocation(50.464498, 5.821896);
+		geos[i++] = new GeoLocation(51.474540, 4.162960);
+		geos[i++] = new GeoLocation(51.316881, 5.140743);
+		geos[i++] = new GeoLocation(50.795519, 5.761471);
+		geos[i++] = new GeoLocation(50.443513, 6.365719);
+		geos[i++] = new GeoLocation(50.771208, 3.163204);
+		geos[i++] = new GeoLocation(50.495958, 3.564205);
+		geos[i++] = new GeoLocation(50.429518, 3.668575);
+		geos[i++] = new GeoLocation(50.310392, 4.130001);
+		geos[i++] = new GeoLocation(50.443513, 4.168453);
+		geos[i++] = new GeoLocation(49.958288, 4.695797);
+		geos[i++] = new GeoLocation(50.447011, 4.690304);
+		geos[i++] = new GeoLocation(50.190968, 6.382198);
+		geos[i++] = new GeoLocation(50.159305, 4.849606);
+		geos[i++] = new GeoLocation(49.841525, 5.794430);
+		geos[i++] = new GeoLocation(49.784811, 5.173702);
+		geos[i++] = new GeoLocation(49.539469, 5.849361);
 
 		for (int j = 0; j < geos.length; j++) {
-			if(geos[j].getLatitude() > geoLoc.getLatitude()
+			if (geos[j].getLatitude() > geoLoc.getLatitude()
 					&& geos[j].getLongitude() < geoLoc.getLongitude()
-					&& geos[j+1].getLatitude() > geoLoc.getLatitude()
-					&& geos[j+1].getLongitude() < geoLoc.getLongitude()
-					){
-				log.debug("Belgian geoloc found! {} lies between {} and {} and {} lies between {} and {}", geoLoc.getLongitude(), geos[j].getLongitude(), geos[j+1].getLongitude(), geoLoc.getLatitude(), geos[j].getLatitude(), geos[j+1].getLatitude());
+					&& geos[j + 1].getLatitude() > geoLoc.getLatitude()
+					&& geos[j + 1].getLongitude() < geoLoc.getLongitude()
+					) {
+				log.debug("Belgian geoloc found! {} lies between {} and {} and {} lies between {} and {}", geoLoc.getLongitude(), geos[j].getLongitude(), geos[j + 1].getLongitude(), geoLoc.getLatitude(), geos[j].getLatitude(), geos[j + 1].getLatitude());
 				return true;
 			}
-			j+=2;
+			j += 2;
 		}
 		return false;
 	}
 
-	private boolean isHolland(GeoLocation geoLoc){
-		if(geoLoc==null) return false;
-		GeoLocation upperLeft = new GeoLocation(53.579461,2.953606);
-		GeoLocation lowerRight = new GeoLocation(50.771208,7.24926);
-		if(upperLeft.getLatitude() > geoLoc.getLatitude()
+	private boolean isHolland(GeoLocation geoLoc) {
+		if (geoLoc == null) return false;
+		GeoLocation upperLeft = new GeoLocation(53.579461, 2.953606);
+		GeoLocation lowerRight = new GeoLocation(50.771208, 7.24926);
+		if (upperLeft.getLatitude() > geoLoc.getLatitude()
 				&& upperLeft.getLongitude() < geoLoc.getLongitude()
 				&& lowerRight.getLatitude() > geoLoc.getLatitude()
 				&& lowerRight.getLongitude() < geoLoc.getLongitude()
-				){
+				) {
 			log.debug("Dutch geoloc found! {} lies between {} and {} and {} lies between {} and {}", geoLoc.getLongitude(), upperLeft.getLongitude(), lowerRight.getLongitude(), geoLoc.getLatitude(), upperLeft.getLatitude(), lowerRight.getLatitude());
 			return true;
 		}
 		return false;
 	}
 
-	private boolean isFrance(GeoLocation geoLoc){
-		if(geoLoc==null) return false;
-		GeoLocation upperLeft = new GeoLocation(50.583237,-4.661636);
-		GeoLocation lowerRight = new GeoLocation(42.081917,9.049301);
-		if(upperLeft.getLatitude() > geoLoc.getLatitude()
+	private boolean isFrance(GeoLocation geoLoc) {
+		if (geoLoc == null) return false;
+		GeoLocation upperLeft = new GeoLocation(50.583237, -4.661636);
+		GeoLocation lowerRight = new GeoLocation(42.081917, 9.049301);
+		if (upperLeft.getLatitude() > geoLoc.getLatitude()
 				&& upperLeft.getLongitude() < geoLoc.getLongitude()
 				&& lowerRight.getLatitude() > geoLoc.getLatitude()
 				&& lowerRight.getLongitude() < geoLoc.getLongitude()
-				){
+				) {
 			log.debug("French geoloc found! {} lies between {} and {} and {} lies between {} and {}", geoLoc.getLongitude(), upperLeft.getLongitude(), lowerRight.getLongitude(), geoLoc.getLatitude(), upperLeft.getLatitude(), lowerRight.getLatitude());
 			return true;
 		}
 		return false;
 	}
 
-	private boolean containsHolland(String location, String url){
-		if(url!=null && url.indexOf(".nl")>=0) return true;
-		if(url!=null && url.indexOf(".fr")>=0) return true;
+	private boolean containsHolland(String location, String url) {
+		if (url != null && url.indexOf(".nl") >= 0) return true;
+		if (url != null && url.indexOf(".fr") >= 0) return true;
 		String[] belgianPointers = {"Nederland", "Netherland", "Amsterdam", "Rotterdam", "Den Haag", "Utrecht", "Groningen", "Eindhoven", "Nijmegen",
-		"Breda"};
+				"Breda"};
 		for (int i = 0; i < belgianPointers.length; i++)
-			if(location.toLowerCase().indexOf(belgianPointers[i].toLowerCase())>=0) return true;
+			if (location.toLowerCase().indexOf(belgianPointers[i].toLowerCase()) >= 0) return true;
 		return false;
 	}
 
-	private boolean containsFrance(String location, String url){
+	private boolean containsFrance(String location, String url) {
 		String[] belgianPointers = {"France", "Paris", "Nantes", "Bordeaux", "Marseille", "Lille", "Le Havre", "Caen", "Reims",
-		"Nancy", "Toulouse", "Brest", "Strasbourg", "Dijon", "Lyon", "Grenoble", "Avignon", "Versailles", "Orleans"};
+				"Nancy", "Toulouse", "Brest", "Strasbourg", "Dijon", "Lyon", "Grenoble", "Avignon", "Versailles", "Orleans"};
 		for (int i = 0; i < belgianPointers.length; i++)
-			if(location.toLowerCase().indexOf(belgianPointers[i].toLowerCase())>=0) return true;
+			if (location.toLowerCase().indexOf(belgianPointers[i].toLowerCase()) >= 0) return true;
 		return false;
 	}
 
 	private List<TweetObject> processTweetObjects(Tweet tweet, Status status) {
 		List<TweetObject> result = new ArrayList<TweetObject>();
+		if (tweet.getText().split("http").length - 1 != status.getURLEntities().length)
+			System.out.println("status = " + status.toString());
 		for (HashtagEntity hashtag : status.getHashtagEntities()) {
 			result.add(processTweetObject(tweet, hashtag.getText(),
 					TweetObjectTypes.HASHTAG));
@@ -305,12 +299,24 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 			// this method
 			result.add(processTweetObject(tweet, media.getMediaURL(),
 					TweetObjectTypes.IMAGE));
+
+			//adding the url from the media to activate it in the front-end
+			TweetObject object = tweetObjectRepository.findByValueAndType(media.getMediaURL(),
+					TweetObjectTypes.URL);
+			if (object == null) {
+				object = new TweetObject();
+				object.setValue(media.getMediaURL());
+				object.setType(TweetObjectTypes.URL);
+				object.setTweet(tweet);
+			}
+			object.increaseQuantity(1);
+			result.add(object);
 		}
 		return result;
 	}
 
 	private TweetObject processTweetObject(Tweet tweet, String value,
-			TweetObjectTypes type) {
+	                                       TweetObjectTypes type) {
 		if (TweetObjectTypes.URL.equals(type)) {
 			// get original url from shortUrl that was not a t.co url
 			value = shortUrlsProcessor.getRealUrl(value);
@@ -337,26 +343,13 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	}
 
 
-	private boolean isGarbage(Status status) {
-		String txt = status.getText();
-		if (txt.startsWith("@"))
-			return true;
-		List<Garbage> words = garbageRepository.findAll();
-		for (Garbage word : words) {
-			if (txt.toLowerCase().contains(word.getWord()))
-				return true;
-		}
-		return false;
-	}
-
-
 	private String getTrackingLanguage(String content) {
 		return googleTranslateService.getTrackingLanguage(content);
 	}
 
 
 	private boolean isTrackingCountry(String content) {
-			return googleTranslateService.isTrackingCountry(content);
+		return googleTranslateService.isTrackingCountry(content);
 	}
 
 }

@@ -11,6 +11,7 @@ import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import be.virtualsushi.tick5.datatracker.model.*;
 import be.virtualsushi.tick5.datatracker.repositories.*;
 import be.virtualsushi.tick5.datatracker.services.GoogleTranslateService;
 import org.apache.commons.lang.StringUtils;
@@ -25,16 +26,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
 
+import twitter4j.Status;
 import twitter4j.Twitter;
-import be.virtualsushi.tick5.datatracker.model.PopularSource;
-import be.virtualsushi.tick5.datatracker.model.Subsidized;
-import be.virtualsushi.tick5.datatracker.model.SubsidizedUrl;
-import be.virtualsushi.tick5.datatracker.model.TweepTypes;
-import be.virtualsushi.tick5.datatracker.model.Tweet;
-import be.virtualsushi.tick5.datatracker.model.TweetObject;
-import be.virtualsushi.tick5.datatracker.model.TweetObjectTypes;
-import be.virtualsushi.tick5.datatracker.model.TweetStates;
-import be.virtualsushi.tick5.datatracker.model.TwitterUser;
 import be.virtualsushi.tick5.datatracker.services.DataAnalysisService;
 import be.virtualsushi.tick5.datatracker.services.ImageProcessService;
 
@@ -43,7 +36,9 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 
 	private static final float BESTSELLER_LIMIT_FACTOR = 0.2f;
 
-	private static final float RECENCY_REDUCE_FACTOR = 2f;
+	private static final float RECENCY_REDUCE_FACTOR = 1f;
+
+	private static final float PUBLISHED_TWICE_REDUCE_FACTOR = 5f;
 
 	private static final float OTHERLANG_REDUCE_FACTOR = 1f;
 
@@ -55,10 +50,15 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 
 	private static final float OTHERCOUNTRY_REDUCE_FACTOR = 4f;
 
+	private static final float GARBAGE_REDUCE_FACTOR = 10f;
+
 	private static final Logger log = LoggerFactory.getLogger(DataAnalysisServiceImpl.class);
 
 	@Autowired
 	private TweetRepository tweetRepository;
+
+	@Autowired
+	private SelfTweetRepository selfTweetRepository;
 
 	@Autowired
 	private TwitterUserRepository twitterUserRepository;
@@ -80,6 +80,9 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 
 	@Autowired
 	private SubsidizedUrlRepository subsidizedUrlRepository;
+
+	@Autowired
+	private GarbageRepository garbageRepository;
 
 	@Autowired
 	private GoogleTranslateService googleTranslateService;
@@ -109,17 +112,22 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 			// Processing top rated tweets.
 			processTopRatedTweets(tweetRepository.getTopRatedTweets(new PageRequest(0, 50, Direction.DESC, "rate")).getContent(), aws_key);
 		} catch (Exception e) {
+			e.printStackTrace();
 			log.error("Error analysing tweets.", e);
 		}
 	}
 
-	private void processTopRatedTweets(List<Tweet> topRatedTweets, String aws_key) throws InterruptedException, ExecutionException, JsonGenerationException, JsonMappingException, IOException {
+	private void processTopRatedTweets(List<Tweet> topRatedTweets, String aws_key) throws InterruptedException, ExecutionException, IOException {
 		log.debug("Top rating a list of {} tweets", topRatedTweets.size());
 		List<Tweet> popularTweets = createPopularTweetsList(topRatedTweets);
+		log.debug("Publishing a list of {} tweets", popularTweets.size());
 		Map<Long, Future<File>> futureImageFiles = new HashMap<Long, Future<File>>();
 		Map<Long, Tweet> tweetsToPost = new HashMap<Long, Tweet>();
 		long id = System.currentTimeMillis();
 		for (Tweet tweet : popularTweets) {
+			log.debug("Setting {} to 'published'", tweet.getId());
+			tweetRepository.setPublished(tweet.getId());
+			log.debug("Ok, tweet was set 'published'");
 			Tweet topper = new Tweet();
 			// topper.setLocation(tweet.getLocation());
 			topper.setQuantity(tweet.getQuantity());
@@ -130,14 +138,24 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 			topper.setId(id++);
 			topper.setState(TweetStates.TOP_RATED);
 			topper.setObjects(tweet.getObjects());
+			topper.setRetweeted(false);
+			topper.setPublished(false);
+			topper.setFavorites(tweet.getFavorites());
 			if (StringUtils.isBlank(tweet.getImage())) {
 				futureImageFiles.put(tweet.getId(), imageProcessService.createTweetImage(topper));
 			}
 			tweetsToPost.put(tweet.getId(), topper);
 			try {
-				if(twitterPublish && tweet.getRecencyFactor()>0.49 && tweet.getQuantity()>6 && tweet.getRate()>20)
-					twitter.retweetStatus(tweet.getId());
-					//twitter.updateStatus(tweet.getText());
+				if(twitterPublish && ((tweet.getQuantity()>4 && tweet.getRate()>(3*tweet.getQuantity())) || (tweet.getQuantity()>1 && tweet.getRate()>(6*tweet.getQuantity())))){
+					SelfTweet selfTweet = selfTweetRepository.findOne(tweet.getId());
+					if(selfTweet==null){
+						twitter.retweetStatus(tweet.getId());
+						log.debug("RETWEETING TWEET {}", tweet.getId());
+						tweetRepository.setRetweeted(tweet.getId());
+						selfTweet = SelfTweet.fromTweet(tweet);
+						selfTweetRepository.save(selfTweet);
+					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -161,6 +179,7 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 				tweetRepository.save(tweetsToPost.get(aLong));
 			} catch (Exception e) {
 				log.warn("Tweet " + tweetsToPost.get(aLong).getId() + " could NOT be saved - " + e.getMessage());
+				e.printStackTrace();
 			}
 
 			// Set this tweep as opinion leader
@@ -185,7 +204,11 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 		while (popularTweets.size()<5 && topRatedTweets.size()>counter){
 			Tweet tweet = topRatedTweets.get(counter++);
 			log.debug("What's a Tweeptype? {}", TweepTypes.MEMBER.name());
-			if(TweepTypes.MEMBER.name().equals(tweet.getUser().getType()) && (trackingLanguage1.equals(tweet.getUser().getLanguage()) || trackingLanguage2.equals(tweet.getUser().getLanguage()) || trackingLanguage2.equals(tweet.getUser().getLanguage())) && trackingCountry.equals(tweet.getUser().getLocation()))
+			if(TweepTypes.MEMBER.name().equals(tweet.getUser().getType()) &&
+					(trackingLanguage1.equals(tweet.getUser().getLanguage()) ||
+							trackingLanguage2.equals(tweet.getUser().getLanguage()) ||
+							trackingLanguage2.equals(tweet.getUser().getLanguage())) &&
+					trackingCountry.equals(tweet.getUser().getLocation()))
 				popularTweets.add(tweet);
 			else if(getTrackingLanguage(tweet.getText())!=null && isTrackingCountry(tweet.getText()))
 				popularTweets.add(tweet);
@@ -202,23 +225,31 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 				 * if(!trackingCountry.equals(tweet.getLocation())) rate =
 				 * (int)(rate/OTHERCOUNTRY_REDUCE_FACTOR);
 				 */
+				boolean hasSubsedizedUrl = false;
 				for (TweetObject object : tweet.getObjects()) {
-					rate += object.getQuantity() * object.getQuantityFactor();
-					if (object.getType() == TweetObjectTypes.URL && isSubsidizedUrl(object.getValue())) {
-						rate += rate * SUBSIDIZEDURL_PROMOTION_FACTOR;
-					}
+					rate += (int)(Math.ceil(object.getQuantity() * object.getQuantityFactor()));
+					if (object.getType() == TweetObjectTypes.URL && isSubsidizedUrl(object.getValue()))
+						hasSubsedizedUrl = true;
 				}
+				if(hasSubsedizedUrl)
+					rate += rate * SUBSIDIZEDURL_PROMOTION_FACTOR;
 				if (isPopularSource(tweet.getUser().getScreenName()))
 					rate = (int) (rate / POPULARSOURCE_REDUCE_FACTOR);
 				if (isSubsidizedTweet(tweet.getText()))
 					rate = rate * SUBSIDIZED_PROMOTION_FACTOR;
-				Tweet fromDb = tweetRepository.findOne(tweet.getId());
-				fromDb.setRate(Math.round(rate * tweet.getRecencyFactor()));
-				fromDb.setRecencyFactor(tweet.getRecencyFactor() / RECENCY_REDUCE_FACTOR);
-				fromDb.setState(TweetStates.RATED);
-				tweetRepository.save(fromDb);
+				if (isGarbage(tweet.getText()))
+					rate = (int)(rate / GARBAGE_REDUCE_FACTOR);
+				//Tweet fromDb = tweetRepository.findOne(tweet.getId());
+				if(tweet.getPublished())
+					tweet.setRate(Math.round(rate / PUBLISHED_TWICE_REDUCE_FACTOR));
+				else
+					tweet.setRate(rate);
+				tweet.setRecencyFactor(tweet.getRecencyFactor() / RECENCY_REDUCE_FACTOR);
+				tweet.setState(TweetStates.RATED);
+				tweetRepository.save(tweet);
 			} catch (Exception e) {
 				log.warn("Not rating tweet " + tweet.getId());
+				e.printStackTrace();
 			}
 		}
 	}
@@ -245,6 +276,16 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 		List<SubsidizedUrl> subsidizedUrlList = subsidizedUrlRepository.findAll();
 		for (SubsidizedUrl subsidizedUrl : subsidizedUrlList) {
 			if (url.toLowerCase().contains(subsidizedUrl.getWord()))
+				return true;
+		}
+		return false;
+	}
+
+
+	private boolean isGarbage(String txt) {
+		List<Garbage> words = garbageRepository.findAll();
+		for (Garbage word : words) {
+			if (txt.toLowerCase().contains(word.getWord()))
 				return true;
 		}
 		return false;

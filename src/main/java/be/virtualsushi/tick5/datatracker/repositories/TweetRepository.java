@@ -45,6 +45,17 @@ public interface TweetRepository extends Tick5Repository<Tweet> {
 
 	@Transactional
 	@Modifying
+	@Query(value = "update Tweet set retweeted=true where id=:id")
+	void setRetweeted(@Param("id") Long id);
+
+
+	@Transactional
+	@Modifying
+	@Query(value = "update Tweet set published=true where id=:id")
+	void setPublished(@Param("id") Long id);
+
+	@Transactional
+	@Modifying
 	@Query(value = "delete from Tweet where state=be.virtualsushi.tick5.datatracker.model.TweetStates.TOP_RATED")
 	void deleteTopRatedTweets();
 

@@ -1,3 +1,14 @@
+select * from TwitterUser where TYPE = 'NEW' and LOCATION = 'BE' and LANGUAGE = 'fr';
+
+select * from TwitterUser where TYPE = 'MEMBER' and LOCATION is NULL and LANGUAGE is NULL;
+
+select count(id) from TwitterUser where type = 'MEMBER';
+
+select * from TwitterUser where numberoftweets = 0 and name like '% %';
+
+delete from TwitterUser where numberoftweets = 0;
+
+
 
 DELETE from TweetObject where TWEET_ID in (select ID from Tweet where USER_ID in (select ID from TwitterUser where type = 'LEADER'));
 DELETE from Tweet where USER_ID in (select ID from TwitterUser where type = 'LEADER');
@@ -20,14 +31,17 @@ DELETE from TweetObject where TWEET_ID in (SELECT ID from Tweet where USER_ID in
 DELETE from Tweet where USER_ID in (select ID from TwitterUser where name like '%washingtonpost%');
 DELETE from TwitterUser where name like '%washingtonpost%';
 
-DELETE from TweetObject where TWEET_ID in (SELECT ID from Tweet where USER_ID in (select ID from TwitterUser where SCREEN_NAME = 'bla_bla'));
-DELETE from Tweet where USER_ID in (select ID from TwitterUser where SCREEN_NAME = 'bla_bla');
-DELETE from TwitterUser where SCREEN_NAME = 'bla_bla';
+DELETE from TweetObject where TWEET_ID in (SELECT ID from Tweet where USER_ID in (select ID from TwitterUser where SCREEN_NAME = 'medianooze'));
+DELETE from Tweet where USER_ID in (select ID from TwitterUser where SCREEN_NAME = 'medianooze');
+DELETE from TwitterUser where SCREEN_NAME = 'medianooze';
 
-DELETE from TweetObject where TWEET_ID in (SELECT ID from Tweet where USER_ID = 18424289);
-DELETE from Tweet where USER_ID = 18424289;
-DELETE from TwitterUser where ID = 18424289;
+DELETE from TweetObject where TWEET_ID in (SELECT ID from Tweet where USER_ID = 17131762);
+DELETE from Tweet where USER_ID = 17131762;
+DELETE from TwitterUser where ID = 17131762;
 
 select name, type from TwitterUser where id in (select USER_ID from Tweet where numberoftweets > 50);
 
 select t.TWEET_TEXT, t.RATE, t.QUANTITY, tu.SCREEN_NAME, tu.LOCATION, tu.LANGUAGE from TwitterUser tu join Tweet t on t.USER_ID=tu.ID where t.TWEET_STATE='NOT_RATED';
+
+#Get all objects from TOP_RATED tweets
+select * from TweetObject where TWEET_ID in (select id from Tweet where TWEET_STATE = 'TOP_RATED');

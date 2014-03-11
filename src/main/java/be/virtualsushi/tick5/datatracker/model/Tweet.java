@@ -13,6 +13,8 @@ import org.codehaus.jackson.annotate.JsonIgnoreProperties;
 import org.codehaus.jackson.annotate.JsonProperty;
 import org.codehaus.jackson.annotate.JsonUnwrapped;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import twitter4j.Status;
 
 /**
@@ -47,9 +49,11 @@ import twitter4j.Status;
 @Entity
 public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 
+	private static final Logger log = LoggerFactory.getLogger(Tweet.class);
+
 	private static final long serialVersionUID = -5452953243879914216L;
 
-	private static final int TWEET_QUANTITY_FACTOR = 2;
+	private static final int TWEET_QUANTITY_FACTOR = 1;
 
 	@JsonUnwrapped
 	@ManyToOne
@@ -66,6 +70,9 @@ public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 
 	@Column(name = "QUANTITY")
 	private int quantity;
+
+	@Column(name = "FAVORITES")
+	private int favorites;
 
 	@Column(name = "TWEET_STATE")
 	@Enumerated(EnumType.STRING)
@@ -86,6 +93,12 @@ public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 
 	@Column(name = "TWEEP")
 	private String tweep;
+
+	@Column(name = "RETWEETED")
+	private Boolean retweeted;
+
+	@Column(name = "PUBLISHED")
+	private Boolean published;
 
 	public String getText() {
 		return text;
@@ -115,6 +128,30 @@ public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 
 	public void setQuantity(int quantity) {
 		this.quantity = quantity;
+	}
+
+	public int getFavorites() {
+		return favorites;
+	}
+
+	public void setFavorites(int favorites) {
+		this.favorites = favorites;
+	}
+
+	public Boolean getRetweeted() {
+		return retweeted;
+	}
+
+	public void setRetweeted(Boolean retweeted) {
+		this.retweeted = retweeted;
+	}
+
+	public Boolean getPublished() {
+		return published;
+	}
+
+	public void setPublished(Boolean published) {
+		this.published = published;
 	}
 
 	public void addObject(TweetObject object) {
@@ -147,6 +184,9 @@ public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 		tweet.setUser(user);
 		tweet.setTweep(user.getScreenName());
 		tweet.setRecencyFactor(1);
+		tweet.setRetweeted(false);
+		tweet.setPublished(false);
+		tweet.setFavorites(status.getFavoriteCount());
 		//tweet.setLanguage(user.getLanguage());
 		//tweet.setLocation(user.getLocation());
 		return tweet;
@@ -237,7 +277,13 @@ public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 	}
 
 	public int getRawRate() {
-		return getQuantity() * TWEET_QUANTITY_FACTOR;
+		int rawRate = (int)(getQuantity()/2 + getQuantity()*(getQuantity()/getUser().getAverageRts()));
+		int rawFaved = 0;
+		if(TweepTypes.MEMBER.equals(getUser().getType()))
+			rawFaved = (int)(getFavorites()/2 + getFavorites()*(getQuantity()/getUser().getAverageRts()));
+
+		log.debug("Quantity {} becomes rate {}, based on the average user RTS of {} and favoritesCount of {}", getQuantity(), rawRate+rawFaved, getUser().getAverageRts(), getFavorites());
+		return rawRate+rawFaved;
 	}
 
 	@JsonProperty("image")

@@ -76,6 +76,11 @@ public class TwitterUser extends CustomIdBaseEntity {
 		return result;
 	}
 
+	public double getAverageRts(){
+		if(getRts()==0) return 1;
+		return (double)getRts()/getNumberoftweets();
+	}
+
 	public List<Tweet> getTweets() {
 		return tweets;
 	}

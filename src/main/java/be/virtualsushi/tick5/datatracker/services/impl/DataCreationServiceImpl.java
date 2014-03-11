@@ -68,7 +68,9 @@ public class DataCreationServiceImpl implements DataCreationService {
 				TwitterUser existingUser = twitterUserRepository.findOne(user.getId());
 				if (existingUser == null) {
 					user.setListMember(true);
-					user.setType(TweepTypes.MEMBER);
+					user.setType(TweepTypes.IMPORTED);
+					user.setLanguage("nl");
+					user.setLocation("BE");
 					users.add(user);
 				}
 			}
