@@ -36,14 +36,14 @@ public class GoogleTranslateServiceImpl implements GoogleTranslateService {
 	@Autowired
 	private CountryMinRepository countryMinRepository;
 
-	@Value("${tracking.language.1}")
+	/*@Value("${tracking.language.1}")
 	private String trackingLanguage1;
 
 	@Value("${tracking.language.2}")
 	private String trackingLanguage2;
 
 	@Value("${tracking.language.3}")
-	private String trackingLanguage3;
+	private String trackingLanguage3;*/
 
 	@Value("${google.translate.apiKey}")
 	private String apiKey;
@@ -64,9 +64,9 @@ public class GoogleTranslateServiceImpl implements GoogleTranslateService {
 
 	@Override
 	public String getTrackingLanguageSimple(String... keyWords) {
-		if(isTrackingLanguageSimple(trackingLanguage1, keyWords)) return trackingLanguage1;
+		/*if(isTrackingLanguageSimple(trackingLanguage1, keyWords)) return trackingLanguage1;
 		if(isTrackingLanguageSimple(trackingLanguage2, keyWords)) return trackingLanguage2;
-		if(isTrackingLanguageSimple(trackingLanguage3, keyWords)) return trackingLanguage3;
+		if(isTrackingLanguageSimple(trackingLanguage3, keyWords)) return trackingLanguage3;*/
 		return null;
 	}
 
@@ -105,9 +105,9 @@ public class GoogleTranslateServiceImpl implements GoogleTranslateService {
 				if (googleLanguageDetectionResult != null) {
 					List<List<GoogleLanguageDetectionResultItem>> itemItems = googleLanguageDetectionResult.getItems();
 					if (itemItems != null && !itemItems.isEmpty()){
-						if(getBestLanguage(itemItems.get(0)).equalsIgnoreCase(trackingLanguage1)) return trackingLanguage1;
+						/*if(getBestLanguage(itemItems.get(0)).equalsIgnoreCase(trackingLanguage1)) return trackingLanguage1;
 						if(getBestLanguage(itemItems.get(0)).equalsIgnoreCase(trackingLanguage2)) return trackingLanguage2;
-						if(getBestLanguage(itemItems.get(0)).equalsIgnoreCase(trackingLanguage3)) return trackingLanguage3;
+						if(getBestLanguage(itemItems.get(0)).equalsIgnoreCase(trackingLanguage3)) return trackingLanguage3;*/
 					}
 				}
 			}

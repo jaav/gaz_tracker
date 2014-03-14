@@ -34,6 +34,9 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	private static final Logger log = LoggerFactory
 			.getLogger(TweetProcessServiceImpl.class);
 
+	//Max age of 2 hours
+	private static final long TWEET_MAX_AGE = 7200000;
+
 	@Autowired
 	private TweetRepository tweetRepository;
 
@@ -55,7 +58,7 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	@Value("${google.translate.apiKey}")
 	private String apiKey;
 
-	@Value("${tracking.language.1}")
+	/*@Value("${tracking.language.1}")
 	private String trackingLanguage1;
 
 	@Value("${tracking.language.2}")
@@ -65,7 +68,7 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	private String trackingLanguage3;
 
 	@Value("${tracking.country}")
-	private String trackingCountry;
+	private String trackingCountry;*/
 
 	/*
 	 * @Value("${garbage.filter}") private String garbageFilter;
@@ -73,40 +76,42 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 
 	@Override
 	//@TODO who retweets who?????
-	public Tweet processStatus(Status status, boolean saveAfterProcess) {
+	public void processStatus(Status status, boolean saveAfterProcess) {
 		if (status.isRetweet()) {
 			// Get tweet that was retweeted (which could also be a retweet
 			// itself)
 			// @todo check if these request do not go over the Twitter limit
-			return processStatus(status.getRetweetedStatus(), saveAfterProcess);
+			processStatus(status.getRetweetedStatus(), saveAfterProcess);
 		}
-		// Check if this tweet is known to the DB
-		Tweet tweet = tweetRepository.findOne(status.getId());
-		if (tweet == null)
-			tweet = processNewTweet(status);
-		if (tweet != null) {
-			tweet.setState(TweetStates.NOT_RATED);
-			tweet.increaseQuantity(1);
-			tweet.setFavorites(status.getFavoriteCount());
-			incrementUserRetweets(status.getUser().getId());
-			if (saveAfterProcess) {
-				Tweet t = null;
-				try {
-					t = tweetRepository.save(tweet);
-				} catch (Exception e) {
-					log.warn("Tweet could not be saved: {},,, id = {}", tweet.getText(), tweet.getId());
-					e.printStackTrace();
+		if(System.currentTimeMillis() - status.getCreatedAt().getTime() < TWEET_MAX_AGE){
+			// Check if this tweet is known to the DB
+			Tweet tweet = tweetRepository.findOne(status.getId());
+			if (tweet == null)
+				tweet = processNewTweet(status);
+			if (tweet != null) {
+				tweet.setState(TweetStates.NOT_RATED);
+				tweet.setRetweets(status.getRetweetCount());
+				tweet.setFavorites(status.getFavoriteCount());
+				incrementMaxes(status, tweet);
+				if (saveAfterProcess) {
+					try {
+						tweetRepository.save(tweet);
+					} catch (Exception e) {
+						log.warn("Tweet could not be saved: {},,, id = {}", tweet.getText(), tweet.getId());
+						e.printStackTrace();
+					}
 				}
-				return t;
 			}
 		}
-		return tweet;
 	}
 
-	private void incrementUserRetweets(long userId) {
-		TwitterUser author = twitterUserRepository.findOne(userId);
-		author.setRts(author.getRts() + 1);
-		twitterUserRepository.save(author);
+	private void incrementMaxes(Status status, Tweet tweet){
+		if(status.getFavoriteCount()> tweet.getUser().getMaxFavs() || status.getRetweetCount()> tweet.getUser().getMaxRts()){
+			TwitterUser author = twitterUserRepository.findOne(tweet.getUser().getId());
+			if(status.getFavoriteCount() > tweet.getUser().getMaxFavs()) author.setMaxFavs(status.getFavoriteCount());
+			if(status.getRetweetCount() > tweet.getUser().getMaxRts()) author.setMaxRts(status.getRetweetCount());
+			twitterUserRepository.save(author);
+		}
 	}
 
 	private Tweet processNewTweet(Status status) {
@@ -130,6 +135,8 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 				// if(trackingLanguage.equals(author.getLanguage())){
 				author.setListMember(true);
 				author.setType(TweepTypes.NEW);
+				author.setMaxFavs(status.getFavoriteCount()>0 ? status.getFavoriteCount() : 1);
+				author.setMaxRts(status.getRetweetCount()>0 ? status.getRetweetCount() : 1);
 					/*
 					 * } else{ author.setListMember(false);
 					 * author.setType(TweepTypes.OTHERLANG); }
@@ -138,14 +145,14 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 				log.error("Error fetching twitter user.", e);
 			}
 		}
-		if (author.getLanguage() == null) {
+		/*if (author.getLanguage() == null) {
 			String discoveredLanguage = getTrackingLanguage(status.getText());
 			if (discoveredLanguage != null) {
 				log.debug("Language of tweet = {}", discoveredLanguage);
 				author.setLanguage(discoveredLanguage);
 			}
-		}
-		if (author.getLocation() == null) {
+		}*/
+		/*if (author.getLocation() == null) {
 			if (containsBelgium(status.getUser().getLocation(), status.getUser().getURL()))
 				author.setLocation(trackingCountry);
 			else if (isBelgium(status.getGeoLocation()))
@@ -163,8 +170,11 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 				author.setLocation("FR");
 				author.setType(TweepTypes.OTHER);
 			}
+		}*/
+		else{
+			if(status.getFavoriteCount() > author.getMaxFavs()) author.setMaxFavs(status.getFavoriteCount());
+			if(status.getRetweetCount() > author.getMaxRts()) author.setMaxRts(status.getRetweetCount());
 		}
-		author.setNumberoftweets(author.getNumberoftweets() + 1);
 		author = twitterUserRepository.save(author);
 			/*
 			 * else if(author.getLanguage()==null){ try {
@@ -183,7 +193,7 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 		return tweet;
 	}
 
-	private boolean containsBelgium(String location, String url) {
+	/*private boolean containsBelgium(String location, String url) {
 		if (url != null && url.indexOf(".be") >= 0) return true;
 		String[] belgianPointers = {"Belgie", "Belgium", "Brussel", "Antwerp", "Gent", "Ghent", "Leuven", "ostend", "Brugge",
 				"Kortrijk", "Aalst", "Sint Niklaas", "Mechelen", "Roeselare", "Izegem", "Turnhout", "Genk", "Hasselt"};
@@ -277,7 +287,7 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 		for (int i = 0; i < belgianPointers.length; i++)
 			if (location.toLowerCase().indexOf(belgianPointers[i].toLowerCase()) >= 0) return true;
 		return false;
-	}
+	}*/
 
 	private List<TweetObject> processTweetObjects(Tweet tweet, Status status) {
 		List<TweetObject> result = new ArrayList<TweetObject>();
@@ -343,13 +353,13 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	}
 
 
-	private String getTrackingLanguage(String content) {
+	/*private String getTrackingLanguage(String content) {
 		return googleTranslateService.getTrackingLanguage(content);
 	}
 
 
 	private boolean isTrackingCountry(String content) {
 		return googleTranslateService.isTrackingCountry(content);
-	}
+	}*/
 
 }

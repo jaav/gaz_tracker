@@ -45,6 +45,12 @@ public class TwitterUser extends CustomIdBaseEntity {
 	@Column(name = "RTS")
 	private int rts;
 
+	@Column(name = "MAX_FAVS")
+	private int maxFavs;
+
+	@Column(name = "MAX_RTS")
+	private int maxRts;
+
 	@Transient
 	private String backgroundImage;
 
@@ -74,11 +80,6 @@ public class TwitterUser extends CustomIdBaseEntity {
 		result.setScreenName(user.getScreenName());
 		result.setName(user.getName());
 		return result;
-	}
-
-	public double getAverageRts(){
-		if(getRts()==0) return 1;
-		return (double)getRts()/getNumberoftweets();
 	}
 
 	public List<Tweet> getTweets() {
@@ -129,15 +130,31 @@ public class TwitterUser extends CustomIdBaseEntity {
 		this.type = type;
 	}
 
-	public int getNumberoftweets() {
+	/*public int getNumberoftweets() {
 		return numberoftweets;
 	}
 
 	public void setNumberoftweets(int numberoftweets) {
 		this.numberoftweets = numberoftweets;
+	}*/
+
+	public int getMaxFavs() {
+		return maxFavs;
 	}
 
-	public String getLanguage() {
+	public void setMaxFavs(int maxFavs) {
+		this.maxFavs = maxFavs;
+	}
+
+	public int getMaxRts() {
+		return maxRts;
+	}
+
+	public void setMaxRts(int maxRts) {
+		this.maxRts = maxRts;
+	}
+
+	/*public String getLanguage() {
 		return language;
 	}
 
@@ -151,5 +168,5 @@ public class TwitterUser extends CustomIdBaseEntity {
 
 	public void setLocation(String location) {
 		this.location = location;
-	}
+	}*/
 }

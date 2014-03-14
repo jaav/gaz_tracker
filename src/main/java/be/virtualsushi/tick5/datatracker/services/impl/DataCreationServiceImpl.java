@@ -69,8 +69,6 @@ public class DataCreationServiceImpl implements DataCreationService {
 				if (existingUser == null) {
 					user.setListMember(true);
 					user.setType(TweepTypes.IMPORTED);
-					user.setLanguage("nl");
-					user.setLocation("BE");
 					users.add(user);
 				}
 			}

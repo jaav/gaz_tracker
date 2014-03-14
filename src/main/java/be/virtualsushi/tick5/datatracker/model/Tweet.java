@@ -47,7 +47,7 @@ import twitter4j.Status;
 
 @JsonIgnoreProperties(value = { "id", "objects", "quantity", "state", "lastModified" })
 @Entity
-public class Tweet extends CustomIdBaseEntity implements HasQuantity {
+public class Tweet extends CustomIdBaseEntity {
 
 	private static final Logger log = LoggerFactory.getLogger(Tweet.class);
 
@@ -68,8 +68,8 @@ public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 	@OneToMany(cascade = { CascadeType.ALL }, mappedBy = "tweet", fetch = FetchType.EAGER)
 	private List<TweetObject> objects;
 
-	@Column(name = "QUANTITY")
-	private int quantity;
+	@Column(name = "RETWEETS")
+	private int retweets;
 
 	@Column(name = "FAVORITES")
 	private int favorites;
@@ -116,18 +116,12 @@ public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 		this.user = user;
 	}
 
-	@Override
-	public void increaseQuantity(int amount) {
-		quantity += amount;
+	public int getRetweets() {
+		return retweets;
 	}
 
-	@Override
-	public int getQuantity() {
-		return quantity;
-	}
-
-	public void setQuantity(int quantity) {
-		this.quantity = quantity;
+	public void setRetweets(int retweets) {
+		this.retweets = retweets;
 	}
 
 	public int getFavorites() {
@@ -274,16 +268,6 @@ public class Tweet extends CustomIdBaseEntity implements HasQuantity {
 			}
 		}
 		return result;
-	}
-
-	public int getRawRate() {
-		int rawRate = (int)(getQuantity()/2 + getQuantity()*(getQuantity()/getUser().getAverageRts()));
-		int rawFaved = 0;
-		if(TweepTypes.MEMBER.equals(getUser().getType()))
-			rawFaved = (int)(getFavorites()/2 + getFavorites()*(getQuantity()/getUser().getAverageRts()));
-
-		log.debug("Quantity {} becomes rate {}, based on the average user RTS of {} and favoritesCount of {}", getQuantity(), rawRate+rawFaved, getUser().getAverageRts(), getFavorites());
-		return rawRate+rawFaved;
 	}
 
 	@JsonProperty("image")
