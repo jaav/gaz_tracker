@@ -51,6 +51,12 @@ public class TwitterUser extends CustomIdBaseEntity {
 	@Column(name = "MAX_RTS")
 	private int maxRts;
 
+	@Column(name = "DESCRIPTION")
+	private String description;
+
+	@Column(name = "FOLLOWERS")
+	private int followers;
+
 	@Transient
 	private String backgroundImage;
 
@@ -154,7 +160,7 @@ public class TwitterUser extends CustomIdBaseEntity {
 		this.maxRts = maxRts;
 	}
 
-	/*public String getLanguage() {
+	public String getLanguage() {
 		return language;
 	}
 
@@ -168,5 +174,21 @@ public class TwitterUser extends CustomIdBaseEntity {
 
 	public void setLocation(String location) {
 		this.location = location;
-	}*/
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public int getFollowers() {
+		return followers;
+	}
+
+	public void setFollowers(int followers) {
+		this.followers = followers;
+	}
 }

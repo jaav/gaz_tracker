@@ -16,6 +16,13 @@ import be.virtualsushi.tick5.datatracker.model.Tweet;
 @Repository
 public interface TweetRepository extends Tick5Repository<Tweet> {
 
+
+	public static final int RETWEET_MINIMUM_RETWEETS = 3;
+
+	public static final int RETWEET_MAXIMUM_RETWEETS = 50;
+
+	public static final int RETWEET_MINIMUM_RATE = 500;
+
 	@Query("from Tweet where state=be.virtualsushi.tick5.datatracker.model.TweetStates.NOT_RATED")
 	List<Tweet> getNotRatedTweets();
 
@@ -37,6 +44,12 @@ public interface TweetRepository extends Tick5Repository<Tweet> {
 
 	@Query(value = "from Tweet t where t.state=be.virtualsushi.tick5.datatracker.model.TweetStates.RATED")
 	List<Tweet> getRatedTweets();
+
+	@Query(value = "from Tweet t where t.state!=be.virtualsushi.tick5.datatracker.model.TweetStates.TOP_RATED" +
+			" and t.rate>= be.virtualsushi.tick5.datatracker.repositories.TweetRepository.RETWEET_MINIMUM_RATE" +
+			" and t.retweets>= be.virtualsushi.tick5.datatracker.repositories.TweetRepository.RETWEET_MINIMUM_RETWEETS" +
+			" and t.retweets<= be.virtualsushi.tick5.datatracker.repositories.TweetRepository.RETWEET_MAXIMUM_RETWEETS")
+	List<Tweet> getTopRatedTweetsForRetweeting();
 
 	@Transactional
 	@Modifying

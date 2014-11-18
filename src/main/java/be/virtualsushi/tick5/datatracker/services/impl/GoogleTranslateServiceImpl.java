@@ -89,7 +89,7 @@ public class GoogleTranslateServiceImpl implements GoogleTranslateService {
 
 	@Override
 	public String getTrackingLanguageGoogle(String... keyWords){
-
+		log.debug("USING GOOGLE TRANSLATE API ... k-ching!");
 		String query = "";
 		for (String word : keyWords) {
 			query += word + "+";

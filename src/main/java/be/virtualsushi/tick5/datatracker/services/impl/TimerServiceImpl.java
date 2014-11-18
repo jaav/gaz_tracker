@@ -47,34 +47,44 @@ public class TimerServiceImpl implements TimerService {
 	private DataCreationService dataCreationService;
 
 	@Override
-	@Scheduled(cron = "0 10,25,40,55 * * * *")
+	@Scheduled(cron = "0 12,27,42,57 * * * *")
 	public void clean() {
 		cleanupService.clean(createAWSKey(-4));
 	}
 
 	@Override
-	@Scheduled(cron = "0 11,26,41,56 * * * *")
+	@Scheduled(cron = "0 13,28,43,58 * * * *")
 	public void analyse() {
 		String aws_key = createAWSKey(0);
 		dataAnalysisService.analyseTweets(aws_key);
-	}
-
-	@Override
-	@Scheduled(cron = "0 12,27,42,57 * * * *")
-	public void createSquaredImages() {
 		List<Tweet> bestsellerTweets = tweetRepository.getToppers();
 		for (Tweet bestsellerTweet : bestsellerTweets) {
 			imageFilter.applySquareFilter(bestsellerTweet.getImage());
 		}
 	}
 
-	@Override
+	/*@Override
+	@Scheduled(cron = "0 12,27,42,57 * * * *")
+	public void createSquaredImages() {
+		List<Tweet> bestsellerTweets = tweetRepository.getToppers();
+		for (Tweet bestsellerTweet : bestsellerTweets) {
+			imageFilter.applySquareFilter(bestsellerTweet.getImage());
+		}
+	}*/
+
+	/*@Override
 	@Scheduled(cron = "0 13,28,43,58 * * * *")
 	public void createFancyImages() {
 		List<Tweet> bestsellerTweets = tweetRepository.getToppers();
 		for (Tweet bestsellerTweet : bestsellerTweets) {
 			imageFilter.applyFancyFilters(bestsellerTweet.getImage(), filterset);
 		}
+	}*/
+
+	@Override
+	@Scheduled(cron = "0 1,16,31,46 * * * *")
+	public void retweet() {
+		dataAnalysisService.retweet();
 	}
 
 	@Override

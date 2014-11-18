@@ -51,13 +51,9 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 
 	private static final int GARBAGE_DIVIDER = 10;
 
-	private static final int RETWEET_MINIMUM_RETWEETS = 3;
+	private static final int LEADER_MINIMUM_RETWEETS = 1000;
 
-	private static final int RETWEET_MINIMUM_RATE = 300;
-
-	private static final int LEADER_MINIMUM_RETWEETS = 100;
-
-	private static final int LEADER_MINIMUM_FAVORITES = 100;
+	private static final int LEADER_MINIMUM_FAVORITES = 1000;
 
 	private static final Logger log = LoggerFactory.getLogger(DataAnalysisServiceImpl.class);
 
@@ -153,22 +149,6 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 				futureImageFiles.put(tweet.getId(), imageProcessService.createTweetImage(topper));
 			}
 			tweetsToPost.put(tweet.getId(), topper);
-			try {
-				if ((tweet.getRetweets() >= RETWEET_MINIMUM_RETWEETS && tweet.getRate() >= RETWEET_MINIMUM_RATE)) {
-					SelfTweet selfTweet = selfTweetRepository.findOne(tweet.getId());
-					if (selfTweet == null) {
-						if (twitterPublish) {
-							twitter.retweetStatus(tweet.getId());
-							log.debug("RETWEETING TWEET {}", tweet.getId());
-						}
-						tweetRepository.setRetweeted(tweet.getId());
-						selfTweet = SelfTweet.fromTweet(tweet);
-						selfTweetRepository.save(selfTweet);
-					}
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
 		}
 		for (Long aLong : futureImageFiles.keySet()) {
 			while (!futureImageFiles.get(aLong).isDone()) {
@@ -288,6 +268,12 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 				tweet.setRecencyFactor(tweet.getRecencyFactor() / RECENCY_DIVIDER);
 				tweet.setState(TweetStates.RATED);
 				tweetRepository.save(tweet);
+
+				if(tweet.getFavorites() > tweet.getUser().getMaxFavs() || tweet.getRetweets() > tweet.getUser().getMaxRts()){
+					tweet.getUser().setMaxFavs(tweet.getFavorites());
+					tweet.getUser().setMaxRts(tweet.getRetweets());
+					twitterUserRepository.save(tweet.getUser());
+				}
 			} catch (Exception e) {
 				log.warn("Not rating tweet " + tweet.getId());
 				e.printStackTrace();
@@ -341,5 +327,32 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 	private boolean isTrackingCountry(String content) {
 			return googleTranslateService.isTrackingCountry(content);
 	}*/
+
+
+
+	public void retweet(){
+		List<Tweet> tweets = tweetRepository.getTopRatedTweetsForRetweeting();
+		//tweets = createPopularTweetsList(tweets);
+		int counter = 0;
+		for (Tweet tweet : tweets) {
+			if(counter<5){
+				try {
+					SelfTweet selfTweet = selfTweetRepository.findOne(tweet.getId());
+					if (selfTweet == null) {
+						if (twitterPublish) {
+							twitter.retweetStatus(tweet.getId());
+							log.debug("RETWEETING TWEET {}", tweet.getId());
+						}
+						tweetRepository.setRetweeted(tweet.getId());
+						selfTweet = SelfTweet.fromTweet(tweet);
+						selfTweetRepository.save(selfTweet);
+						}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				counter++;
+			}
+		}
+	}
 
 }

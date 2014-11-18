@@ -37,6 +37,9 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	//Max age of 2 hours
 	private static final long TWEET_MAX_AGE = 7200000;
 
+	//tweets from 'new' tweeps are accepted if they have a retweeted count bigger then ...
+	private static final int NEW_MEMBER_RETWEETS_MINIMUM = 3;
+
 	@Autowired
 	private TweetRepository tweetRepository;
 
@@ -65,10 +68,10 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	private String trackingLanguage2;
 
 	@Value("${tracking.language.3}")
-	private String trackingLanguage3;
+	private String trackingLanguage3;*/
 
 	@Value("${tracking.country}")
-	private String trackingCountry;*/
+	private String trackingCountry;
 
 	/*
 	 * @Value("${garbage.filter}") private String garbageFilter;
@@ -92,7 +95,7 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 				tweet.setState(TweetStates.NOT_RATED);
 				tweet.setRetweets(status.getRetweetCount());
 				tweet.setFavorites(status.getFavoriteCount());
-				incrementMaxes(status, tweet);
+				//incrementMaxes(status, tweet);
 				if (saveAfterProcess) {
 					try {
 						tweetRepository.save(tweet);
@@ -105,14 +108,14 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 		}
 	}
 
-	private void incrementMaxes(Status status, Tweet tweet){
+	/*private void incrementMaxes(Status status, Tweet tweet){
 		if(status.getFavoriteCount()> tweet.getUser().getMaxFavs() || status.getRetweetCount()> tweet.getUser().getMaxRts()){
 			TwitterUser author = twitterUserRepository.findOne(tweet.getUser().getId());
 			if(status.getFavoriteCount() > tweet.getUser().getMaxFavs()) author.setMaxFavs(status.getFavoriteCount());
 			if(status.getRetweetCount() > tweet.getUser().getMaxRts()) author.setMaxRts(status.getRetweetCount());
 			twitterUserRepository.save(author);
 		}
-	}
+	}*/
 
 	private Tweet processNewTweet(Status status) {
 		Tweet tweet;
@@ -121,79 +124,61 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 		// If the author of the original tweet is unknown to the DB (most
 		// probable), set the auther of the retweet as author of the
 		// original tweet
-		if (author == null) {
-			try {
-				// author =
-				// TwitterUser.fromUser(twitter.showUser(status.getUser().getId()));
-				author = new TwitterUser();
-				author.setId(status.getUser().getId());
-				author.setName(status.getUser().getName());
-				author.setScreenName(status.getUser().getScreenName());
-
-//					author.setLanguage(getlanguage(status.getText()));
-//					author.setLocation(getLocation(status));
-				// if(trackingLanguage.equals(author.getLanguage())){
-				author.setListMember(true);
-				author.setType(TweepTypes.NEW);
-				author.setMaxFavs(status.getFavoriteCount()>0 ? status.getFavoriteCount() : 1);
-				author.setMaxRts(status.getRetweetCount()>0 ? status.getRetweetCount() : 1);
-					/*
-					 * } else{ author.setListMember(false);
-					 * author.setType(TweepTypes.OTHERLANG); }
-					 */
-			} catch (Exception e) {
-				log.error("Error fetching twitter user.", e);
+		if (author == null && status.getRetweetCount()>NEW_MEMBER_RETWEETS_MINIMUM) {
+			author = new TwitterUser();
+			setAuthorOrigin(status, author);
+			if("BE".equals(author.getLocation()) && "nl".equals(author.getLanguage())
+					|| "BE".equals(author.getLocation()) && "fr".equals(author.getLanguage())
+					|| "BE".equals(author.getLocation()) && "en".equals(author.getLanguage())){
+				try {
+					author.setType(TweepTypes.NEWMEMBER);
+					author.setMaxFavs(NEW_MEMBER_RETWEETS_MINIMUM);
+					author.setMaxRts(NEW_MEMBER_RETWEETS_MINIMUM);
+				} catch (Exception e) {
+					log.error("Error fetching twitter user.", e);
+				}
 			}
+			else{
+				author.setType(TweepTypes.OTHER);
+			}
+			author.setId(status.getUser().getId());
+			author.setName(status.getUser().getName());
+			author.setScreenName(status.getUser().getScreenName());
+			author.setDescription(status.getUser().getDescription());
+			author.setFollowers(status.getUser().getFollowersCount());
+			author.setListMember(true);
+			author = twitterUserRepository.save(author);
 		}
-		/*if (author.getLanguage() == null) {
-			String discoveredLanguage = getTrackingLanguage(status.getText());
-			if (discoveredLanguage != null) {
-				log.debug("Language of tweet = {}", discoveredLanguage);
-				author.setLanguage(discoveredLanguage);
-			}
-		}*/
-		/*if (author.getLocation() == null) {
-			if (containsBelgium(status.getUser().getLocation(), status.getUser().getURL()))
-				author.setLocation(trackingCountry);
-			else if (isBelgium(status.getGeoLocation()))
-				author.setLocation(trackingCountry);
-			else if (containsHolland(status.getUser().getLocation(), status.getUser().getURL())) {
-				author.setLocation("NL");
-				author.setType(TweepTypes.OTHER);
-			} else if (isHolland(status.getGeoLocation())) {
-				author.setLocation("NL");
-				author.setType(TweepTypes.OTHER);
-			} else if (containsFrance(status.getUser().getLocation(), status.getUser().getURL())) {
-				author.setLocation("FR");
-				author.setType(TweepTypes.OTHER);
-			} else if (isFrance(status.getGeoLocation())) {
-				author.setLocation("FR");
-				author.setType(TweepTypes.OTHER);
-			}
-		}*/
-		else{
-			if(status.getFavoriteCount() > author.getMaxFavs()) author.setMaxFavs(status.getFavoriteCount());
-			if(status.getRetweetCount() > author.getMaxRts()) author.setMaxRts(status.getRetweetCount());
+		if(author!=null && (author.getType().equals(TweepTypes.NEWMEMBER) || author.getType().equals(TweepTypes.MEMBER))){
+			tweet = Tweet.fromStatus(status, author);
+			// Start processing images, urls and hashtags
+			tweet.addObjects(processTweetObjects(tweet, status));
+			return tweet;
 		}
-		author = twitterUserRepository.save(author);
-			/*
-			 * else if(author.getLanguage()==null){ try {
-			 * author.setLanguage(getlanguage(status.getText()));
-			 * if(author.getLanguage()!=null){
-			 * if(trackingLanguage.equals(author.getLanguage())){
-			 * author.setListMember(true); author.setType(TweepTypes.MEMBER); }
-			 * else{ author.setListMember(false);
-			 * author.setType(TweepTypes.OTHERLANG); } author =
-			 * twitterUserRepository.save(author); } } catch (Exception e) {
-			 * log.error("Error fetching twitter user.", e); } }
-			 */
-		tweet = Tweet.fromStatus(status, author);
-		// Start processing images, urls and hashtags
-		tweet.addObjects(processTweetObjects(tweet, status));
-		return tweet;
+		return null;
 	}
 
-	/*private boolean containsBelgium(String location, String url) {
+	private void setAuthorOrigin(Status status, TwitterUser author){
+		String discoveredLanguage = status.getIsoLanguageCode();
+		if(discoveredLanguage==null)
+			discoveredLanguage = status.getUser().getLang();
+		if(discoveredLanguage==null)
+			discoveredLanguage = getTrackingLanguage(status.getUser().getDescription());
+		if(discoveredLanguage==null)
+			discoveredLanguage = getTrackingLanguage(status.getText());
+		if (discoveredLanguage != null) {
+			log.debug("Language of user = {}", discoveredLanguage);
+			author.setLanguage(discoveredLanguage);
+		}
+
+		if (containsBelgium(status.getUser().getLocation(), status.getUser().getURL()))
+			author.setLocation(trackingCountry);
+		else if (isBelgium(status.getGeoLocation()))
+			author.setLocation(trackingCountry);
+
+	}
+
+	private boolean containsBelgium(String location, String url) {
 		if (url != null && url.indexOf(".be") >= 0) return true;
 		String[] belgianPointers = {"Belgie", "Belgium", "Brussel", "Antwerp", "Gent", "Ghent", "Leuven", "ostend", "Brugge",
 				"Kortrijk", "Aalst", "Sint Niklaas", "Mechelen", "Roeselare", "Izegem", "Turnhout", "Genk", "Hasselt"};
@@ -241,7 +226,7 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 		return false;
 	}
 
-	private boolean isHolland(GeoLocation geoLoc) {
+	/*private boolean isHolland(GeoLocation geoLoc) {
 		if (geoLoc == null) return false;
 		GeoLocation upperLeft = new GeoLocation(53.579461, 2.953606);
 		GeoLocation lowerRight = new GeoLocation(50.771208, 7.24926);
@@ -353,13 +338,13 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 	}
 
 
-	/*private String getTrackingLanguage(String content) {
+	private String getTrackingLanguage(String content) {
 		return googleTranslateService.getTrackingLanguage(content);
 	}
 
 
 	private boolean isTrackingCountry(String content) {
 		return googleTranslateService.isTrackingCountry(content);
-	}*/
+	}
 
 }
