@@ -1,5 +1,6 @@
 package be.virtualsushi.tick5.datatracker.model;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 import javax.persistence.*;
@@ -42,8 +43,8 @@ public class TwitterUser extends CustomIdBaseEntity {
 	@Column(name = "NUMBEROFTWEETS")
 	private int numberoftweets;
 
-	@Column(name = "RTS")
-	private int rts;
+	@Column(name = "POPULAR_TWEETS")
+	private int popularTweets;
 
 	@Column(name = "MAX_FAVS")
 	private int maxFavs;
@@ -56,6 +57,9 @@ public class TwitterUser extends CustomIdBaseEntity {
 
 	@Column(name = "FOLLOWERS")
 	private int followers;
+
+	@Column(name = "DATE_ADDED")
+	private Timestamp dateAdded;
 
 	@Transient
 	private String backgroundImage;
@@ -96,12 +100,12 @@ public class TwitterUser extends CustomIdBaseEntity {
 		this.tweets = tweets;
 	}
 
-	public int getRts() {
-		return rts;
+	public int getPopularTweets() {
+		return popularTweets;
 	}
 
-	public void setRts(int rts) {
-		this.rts = rts;
+	public void setPopularTweets(int popularTweets) {
+		this.popularTweets = popularTweets;
 	}
 
 	public boolean isListMember() {
@@ -190,5 +194,13 @@ public class TwitterUser extends CustomIdBaseEntity {
 
 	public void setFollowers(int followers) {
 		this.followers = followers;
+	}
+
+	public Timestamp getDateAdded() {
+		return dateAdded;
+	}
+
+	public void setDateAdded(Timestamp dateAdded) {
+		this.dateAdded = dateAdded;
 	}
 }

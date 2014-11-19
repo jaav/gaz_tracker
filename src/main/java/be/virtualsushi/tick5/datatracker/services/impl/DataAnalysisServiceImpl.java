@@ -175,12 +175,14 @@ public class DataAnalysisServiceImpl implements DataAnalysisService {
 				e.printStackTrace();
 			}
 
+
+
+			TwitterUser dbUser = tweetsToPost.get(aLong).getUser();
+			dbUser.setPopularTweets(dbUser.getPopularTweets()+1);
 			// Set this tweep as opinion leader
-			if (tweetsToPost.get(aLong).getRetweets() > LEADER_MINIMUM_RETWEETS || tweetsToPost.get(aLong).getFavorites() > LEADER_MINIMUM_FAVORITES) {
-				TwitterUser dbUser = tweetsToPost.get(aLong).getUser();
+			if (tweetsToPost.get(aLong).getRetweets() > LEADER_MINIMUM_RETWEETS || tweetsToPost.get(aLong).getFavorites() > LEADER_MINIMUM_FAVORITES)
 				dbUser.setType(TweepTypes.LEADER);
-				twitterUserRepository.save(dbUser);
-			}
+			twitterUserRepository.save(dbUser);
 		}
 		awsRepository.insertTweets(tweetsToPost, aws_key);
 		/*

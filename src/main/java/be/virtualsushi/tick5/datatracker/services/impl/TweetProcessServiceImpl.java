@@ -1,6 +1,8 @@
 package be.virtualsushi.tick5.datatracker.services.impl;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -146,6 +148,7 @@ public class TweetProcessServiceImpl implements TweetProcessService {
 			author.setScreenName(status.getUser().getScreenName());
 			author.setDescription(status.getUser().getDescription());
 			author.setFollowers(status.getUser().getFollowersCount());
+			author.setDateAdded(new Timestamp(new Date().getTime()));
 			author.setListMember(true);
 			author = twitterUserRepository.save(author);
 		}
