@@ -166,8 +166,8 @@
                 <images.folder>C:/work/tmp</images.folder>
                 <images.address.external>blablabla</images.address.external>
                 <log.file>C:/work/tmp/datatracker.log</log.file>
-                <aws.secret.key>extzYGl4HbgRBOnwYtI2ywVAFaXN8Cf87bg093Zk</aws.secret.key>
-                <aws.access.key>AKIAIKCDFSIIMYL7LF6Q</aws.access.key>
+                <aws.secret.key>ACCESSKEY_SECRET</aws.secret.key>
+                <aws.access.key>ACCESSKEY_VALUE</aws.access.key>
                 <dynamo.table.name>tweeet</dynamo.table.name>
                 <aws.endpoint>https://dynamodb.eu-west-1.amazonaws.com</aws.endpoint>
             </properties>
@@ -200,8 +200,8 @@
                 <google.translate.apiKey>AIzaSyBtmmmuAdTVUiplexPu-9jCbqpUQhOQArc</google.translate.apiKey>
                 <images.address.external>http://tickkk5.com/~jefw/tick5/repo/datatracker_images/
                 </images.address.external>
-                <aws.secret.key>extzYGl4HbgRBOnwYtI2ywVAFaXN8Cf87bg093Zk</aws.secret.key>
-                <aws.access.key>AKIAIKCDFSIIMYL7LF6Q</aws.access.key>
+                <aws.secret.key>ACCESSKEY_SECRET</aws.secret.key>
+                <aws.access.key>ACCESSKEY_VALUE</aws.access.key>
                 <dynamo.table.name>tweeetsky</dynamo.table.name>
                 <aws.endpoint>https://dynamodb.eu-west-1.amazonaws.com</aws.endpoint>
             </properties>
@@ -233,8 +233,8 @@
                 <web.root.folder>/home/ubuntu/http/ga-z</web.root.folder>
                 <google.translate.apiKey>AIzaSyBtmmmuAdTVUiplexPu-9jCbqpUQhOQArc</google.translate.apiKey>
                 <images.address.external>http://tick5.be/repo/datatracker_images/</images.address.external>
-                <aws.secret.key>extzYGl4HbgRBOnwYtI2ywVAFaXN8Cf87bg093Zk</aws.secret.key>
-                <aws.access.key>AKIAIKCDFSIIMYL7LF6Q</aws.access.key>
+                <aws.secret.key>ACCESSKEY_SECRET</aws.secret.key>
+                <aws.access.key>ACCESSKEY_VALUE</aws.access.key>
                 <dynamo.table.name>nuuus</dynamo.table.name>
                 <aws.endpoint>https://dynamodb.eu-west-1.amazonaws.com</aws.endpoint>
             </properties>
@@ -267,8 +267,8 @@
                 <google.translate.apiKey>AIzaSyBtmmmuAdTVUiplexPu-9jCbqpUQhOQArc</google.translate.apiKey>
                 <images.address.external>http://tickkk5.com/~jefw/tick5/repo/datatracker_images/
                 </images.address.external>
-                <aws.secret.key>extzYGl4HbgRBOnwYtI2ywVAFaXN8Cf87bg093Zk</aws.secret.key>
-                <aws.access.key>AKIAIKCDFSIIMYL7LF6Q</aws.access.key>
+                <aws.secret.key>ACCESSKEY_SECRET</aws.secret.key>
+                <aws.access.key>ACCESSKEY_VALUE</aws.access.key>
                 <dynamo.table.name>nuuussky</dynamo.table.name>
                 <aws.endpoint>https://dynamodb.eu-west-1.amazonaws.com</aws.endpoint>
             </properties>
@@ -298,8 +298,8 @@
                 <web.root.folder>/home/ubuntu/http/tick5</web.root.folder>
                 <google.translate.apiKey>AIzaSyBtmmmuAdTVUiplexPu-9jCbqpUQhOQArc</google.translate.apiKey>
                 <images.address.external>http://tick5.be/repo/datatracker_images/</images.address.external>
-                <aws.secret.key>extzYGl4HbgRBOnwYtI2ywVAFaXN8Cf87bg093Zk</aws.secret.key>
-                <aws.access.key>AKIAIKCDFSIIMYL7LF6Q</aws.access.key>
+                <aws.secret.key>ACCESSKEY_SECRET</aws.secret.key>
+                <aws.access.key>ACCESSKEY_VALUE</aws.access.key>
                 <dynamo.table.name>tweeet</dynamo.table.name>
                 <aws.endpoint>https://dynamodb.eu-west-1.amazonaws.com</aws.endpoint>
             </properties>
